@@ -2,8 +2,7 @@
 {
 	public interface IGeoService
 	{
-		void SetUrl(string address);
 		bool GetResponse();
-		string GetGeoData();
+		string GetPolygons(int frequency);
 	}
 }

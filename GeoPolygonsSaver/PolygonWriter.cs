@@ -11,26 +11,26 @@ namespace GeoPolygonsSaver
 			_geoService = geoService;
 		}
 
-		public void Start()
+		public void Start(int frequency, string outputFileName)
 		{
-			string address = string.Empty;
-			while (address == string.Empty)
-			{
-				Console.WriteLine("Введите адрес.");
-				address = Console.ReadLine();
-			}
-			_geoService.SetUrl(address);
 			if (_geoService.GetResponse())
 			{
-				string geoData = _geoService.GetGeoData();
-				WritePoligonsToFile(geoData, address);
-				Console.WriteLine($"Запись прошла успешно. Результаты сохранены в файл {address}.txt в директории программы.");
-				Console.WriteLine("Нажмите любую клавишу для завершения...");
+				string geoData = _geoService.GetPolygons(frequency);
+				if (geoData != null)
+				{
+					WritePoligonsToFile(geoData, outputFileName);
+					Console.WriteLine($"Запись прошла успешно. Результаты сохранены в файл {outputFileName}.txt в директории программы.");
+				}
+				else
+				{
+					Console.WriteLine("Нет информации об адресе.");
+				}
 			}
 			else
 			{
-				Console.WriteLine("Что то пошло не так...");
+				Console.WriteLine("Не удалось получить ответ от сервера...");
 			}
+			Console.WriteLine("Нажмите любую клавишу для завершения...");
 			Console.ReadLine();
 		}
 

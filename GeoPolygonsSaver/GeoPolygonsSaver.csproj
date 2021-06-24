@@ -49,6 +49,7 @@
     <Compile Include="IGeoService.cs" />
     <Compile Include="OpenStreetMap\OSMGeoService.cs" />
     <Compile Include="OpenStreetMap\OSMJson.cs" />
+    <Compile Include="Polygon.cs" />
     <Compile Include="PolygonWriter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
