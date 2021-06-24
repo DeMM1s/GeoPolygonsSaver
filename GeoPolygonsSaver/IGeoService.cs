@@ -3,6 +3,6 @@
 	public interface IGeoService
 	{
 		bool GetResponse();
-		string GetPolygons(int frequency);
+		string GetPolygons();
 	}
 }

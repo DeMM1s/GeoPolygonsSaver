@@ -9,14 +9,21 @@ namespace GeoPolygonsSaver.OpenStreetMap
 {
 	public class OSMGeoService : IGeoService
 	{
-		private string _url = null;
+		private string _url;
 		private HttpWebResponse _webResponse;
 		private int _countOfPolygons = 0;
-		private string _geoData = null;
-		public OSMGeoService(string address)
+		private string _geoData;
+		private string _polygons;
+		private int _frequency;
+		public OSMGeoService(string address, int frequency)
 		{
-			Console.WriteLine("Для доступа к API OSM необходима учетная запись, пожалуйста, введите Email вашего аккаунта OSM.");
-			string email = Console.ReadLine();
+			_frequency = frequency;
+			string email = string.Empty;
+			while (email == string.Empty)
+			{
+				Console.WriteLine("Для доступа к API OSM необходима активированная учетная запись, пожалуйста, введите Email вашего аккаунта OSM.");
+				email = Console.ReadLine();
+			}
 			_url = "https://nominatim.openstreetmap.org/search?q=" + address.Replace(' ', '+') + "&format=geojson&polygon_geojson=1" + "&email=" + email;
 		}
 
@@ -25,30 +32,35 @@ namespace GeoPolygonsSaver.OpenStreetMap
 			var httpWebRequest = (HttpWebRequest)WebRequest.Create(_url);
 			httpWebRequest.ContentType = "text/json";
 			httpWebRequest.Method = "GET";
-			_webResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-
+			try
+			{
+				_webResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+			}
+			catch (WebException e)
+			{
+				Console.WriteLine(e.Message);
+				return false;
+			}
 			return _webResponse.StatusCode == HttpStatusCode.OK;
 		}
 
-		public string GetPolygons(int frequency)
+		public string GetPolygons()
 		{
-			string polygons = null;
 			GetGeoData();
 			if (_geoData != null)
 			{
 				if (_countOfPolygons == 1)
 				{
-					polygons = GetPolygon(frequency);
+					List<List<double>> deserializePolygon = JsonConvert.DeserializeObject<List<List<double>>>(_geoData);
+					_polygons = CreatePolygonWithFrequencyPoints(deserializePolygon);
 				}
 				else
 				{
-					for (int i = 0; i < _countOfPolygons; i++)
-					{
-						polygons += GetPolygon(i, frequency);
-					}
+					List<List<List<double>>> deserializeMultiPolygon = JsonConvert.DeserializeObject<List<List<List<double>>>>(_geoData);
+					_polygons = CreateMultiPolygonWithFrequencyPoints(deserializeMultiPolygon); 
 				}
 			}
-			return polygons;
+			return _polygons;
 		}
 
 		private void GetGeoData()
@@ -96,40 +108,37 @@ namespace GeoPolygonsSaver.OpenStreetMap
 			return polygons;
 		}
 
-		private string GetPolygon(int frequency)
+		private string CreatePolygonWithFrequencyPoints(List<List<double>> deserializePolygon)
 		{
-			string polygon = null;
+			string polygon = "[";
 			int countOfPoint = 0;
-			List<List<double>> deserializePolygon = JsonConvert.DeserializeObject<List<List<double>>>(_geoData);
-			for (int i = 0; i < deserializePolygon.Count; i += frequency)
+			for (int i = 0; i < deserializePolygon.Count; i += _frequency)
 			{
-				polygon += "[" + deserializePolygon[i][0].ToString() + ", " + deserializePolygon[i][1].ToString() + "]";
-				if (i + frequency < deserializePolygon.Count)
+				polygon += "[" + deserializePolygon[i][0].ToString().Replace(',', '.') + ", " + deserializePolygon[i][1].ToString().Replace(',', '.') + "]";
+				if (i + _frequency < deserializePolygon.Count)
 				{
-					polygon += ", ";
+					polygon += ",";
 				}
 				countOfPoint++;
 			}
 			Console.WriteLine($"Сохранено {countOfPoint} точек из {deserializePolygon.Count} точек полигона");
-			return polygon;
+			return polygon + "]";
 		}
 
-		private string GetPolygon(int currentPolygon, int frequency)
+		private string CreateMultiPolygonWithFrequencyPoints(List<List<List<double>>> deserializeMultiPolygon)
 		{
-			string polygon = null;
-			int countOfPoint = 0;
-			List<List<List<double>>> deserializePolygon = JsonConvert.DeserializeObject<List<List<List<double>>>>(_geoData);
-			for (int i = 0; i < deserializePolygon[currentPolygon].Count; i += frequency)
+			string polygons = "[";
+			Console.WriteLine($"Геообъект является мультиполигоном, состоящим из {deserializeMultiPolygon.Count} полигонов");
+			for (int i = 0; i < deserializeMultiPolygon.Count; i++)
 			{
-				polygon += "[" + deserializePolygon[currentPolygon][i][0].ToString() + ", " + deserializePolygon[currentPolygon][i][1].ToString() + "]";
-				if (i + frequency < deserializePolygon[currentPolygon].Count)
+				polygons += CreatePolygonWithFrequencyPoints(deserializeMultiPolygon[i]);
+				if (i + 1 != deserializeMultiPolygon.Count)
 				{
-					polygon += ", ";
+					_polygons += ",";
 				}
-				countOfPoint++;
 			}
-			Console.WriteLine($"Сохранено {countOfPoint} точек из {deserializePolygon[currentPolygon].Count} точек в полигоне {currentPolygon} из мультиполигона");
-			return polygon;
+			polygons += "]";
+			return polygons;
 		}
 	}
 }

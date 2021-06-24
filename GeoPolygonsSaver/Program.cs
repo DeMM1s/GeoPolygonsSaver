@@ -1,15 +1,37 @@
 ﻿using GeoPolygonsSaver.OpenStreetMap;
 using System;
+using System.IO;
 
 namespace GeoPolygonsSaver
 {
 	class Program
 	{
+		static string address = string.Empty;
+		static int frequency = 0;
+		static string outputFileName = string.Empty;
 		static void Main()
 		{
-			string address = string.Empty;
-			int frequency = default;
-			string outputFileName = string.Empty;
+			GetInfoForRequest();
+			IGeoService geoService = new OSMGeoService(address, frequency);
+			if (geoService.GetResponse())
+			{
+				string geoData = geoService.GetPolygons();
+				if (geoData != null)
+				{
+					WritePoligonsToFile(geoData, outputFileName);
+					Console.WriteLine($"Запись прошла успешно. Результаты сохранены в файл {outputFileName}.txt в директории программы.");
+				}
+				else
+				{
+					Console.WriteLine("Нет информации об указанном адресе.");
+				}
+			}
+			Console.WriteLine("Нажмите любую клавишу для завершения...");
+			Console.ReadLine();
+		}
+
+		static void GetInfoForRequest()
+		{
 			while (address == string.Empty)
 			{
 				Console.WriteLine("Введите адрес.");
@@ -18,7 +40,7 @@ namespace GeoPolygonsSaver
 
 			while (frequency <= 0)
 			{
-				Console.WriteLine("Введите частоту сохранения точек полигона(1 если оптимизация не нужна).");
+				Console.WriteLine("Введите частоту(число больше 0) сохранения точек полигона(1 если оптимизация не нужна).");
 				string answer = Console.ReadLine();
 				if (!Int32.TryParse(answer, out frequency))
 				{
@@ -30,8 +52,13 @@ namespace GeoPolygonsSaver
 				Console.WriteLine("Введите название файла для сохранения результатов.");
 				outputFileName = Console.ReadLine();
 			}
-			PolygonWriter polygonWriter = new PolygonWriter(new OSMGeoService(address));
-			polygonWriter.Start(frequency, outputFileName);
+		}
+
+		static void WritePoligonsToFile(string geoData, string fileName)
+		{
+			StreamWriter streamWriter = new StreamWriter($"{fileName}.txt", false);
+			streamWriter.Write(geoData);
+			streamWriter.Close();
 		}
 	}
 }
